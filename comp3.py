@@ -19,7 +19,7 @@ def laser_input(label, suffix):
     N = st.number_input(f"{label} Number of Pulses", 1, 100000, 20, key=f"N_{suffix}")
     duration_unit = st.selectbox(f"{label} Pulse Duration Unit", ["µs", "ns"], key=f"unit_{suffix}")
     tau_val = st.number_input(f"{label} Pulse Duration ({duration_unit})", 0.01, 100000.0, 200.0, key=f"tau_{suffix}")
-    tau = tau_val * (1e-6 if duration_unit == "µs" else 1e-9")
+    tau = tau_val * (1e-6 if duration_unit == "µs" else 1e-9)
     wl = st.number_input(f"{label} Wavelength (nm)", 100, 10000, 2940, key=f"wl_{suffix}")
     return {"D": D, "E": E_mJ / 1000, "f": f, "N": N, "tau": tau, "wl": wl, "label": label}
 
