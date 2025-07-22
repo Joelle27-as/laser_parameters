@@ -130,4 +130,3 @@ ax2.set_ylabel("ΔT (a.u.)")
 ax2.set_title("Thermal Buildup Over Time")
 ax2.legend()
 st.pyplot(fig2)
-an.py"
