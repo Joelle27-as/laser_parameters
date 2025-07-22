@@ -115,7 +115,6 @@ if res1 and res2:
 
 # Add fluence and average irradiance matching sections to the dual laser comparison app
 
-fluence_and_avg_irradiance_matching = """
 # -------------------------------
 # 🎯 Match Fluence and Avg Irradiance
 # -------------------------------
