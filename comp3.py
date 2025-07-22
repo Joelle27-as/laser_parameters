@@ -1,4 +1,6 @@
-# Regenerate the app with the timeline plot removed (since ns durations cause instability)
+# Update script to include:
+# - log-scale y-axis for the bar chart
+# - multiselect box to let user choose which parameters to display
 
 import streamlit as st
 import numpy as np
@@ -65,16 +67,29 @@ if res1 and res2:
     })
     st.dataframe(df)
 
-    st.markdown("### 📈 Fluence & Power Comparison")
-    keys = ["Fluence (J/cm²)", "Peak Irradiance (W/cm²)", "Avg Irradiance (W/cm²)", "Peak Power (W)"]
-    vals1 = [res1[k] for k in keys]
-    vals2 = [res2[k] for k in keys]
-    x = np.arange(len(keys))
-    fig, ax = plt.subplots()
-    ax.bar(x - 0.2, vals1, 0.4, label="Laser 1")
-    ax.bar(x + 0.2, vals2, 0.4, label="Laser 2")
-    ax.set_xticks(x)
-    ax.set_xticklabels(keys, rotation=45)
-    ax.set_ylabel("Value")
-    ax.legend()
-    st.pyplot(fig)
+    st.markdown("### 📈 Select Parameters to Compare (Log Scale)")
+    all_keys = [
+        "Fluence (J/cm²)",
+        "Peak Irradiance (W/cm²)",
+        "Avg Irradiance (W/cm²)",
+        "Peak Power (W)",
+        "Total Energy (J)",
+        "Avg Power Density (W/cm²)"
+    ]
+    selected_keys = st.multiselect("Select parameters:", all_keys, default=all_keys[:4])
+
+    if selected_keys:
+        vals1 = [res1[k] for k in selected_keys]
+        vals2 = [res2[k] for k in selected_keys]
+        x = np.arange(len(selected_keys))
+        fig, ax = plt.subplots()
+        ax.bar(x - 0.2, vals1, 0.4, label="Laser 1")
+        ax.bar(x + 0.2, vals2, 0.4, label="Laser 2")
+        ax.set_xticks(x)
+        ax.set_xticklabels(selected_keys, rotation=45, ha="right")
+        ax.set_ylabel("Value (Log Scale)")
+        ax.set_yscale("log")
+        ax.legend()
+        st.pyplot(fig)
+    else:
+        st.info("Please select at least one parameter to visualize.")
