@@ -112,3 +112,56 @@ if res1 and res2:
         A_new = E1 / (I_target * tau1)
         D_new = 2 * np.sqrt(A_new / np.pi) * 10  # cm² to mm
         st.success(f"To match Iₚₑₐₖ, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
+
+# Add fluence and average irradiance matching sections to the dual laser comparison app
+
+fluence_and_avg_irradiance_matching = """
+# -------------------------------
+# 🎯 Match Fluence and Avg Irradiance
+# -------------------------------
+
+st.markdown("### 🎯 Match Fluence or Average Irradiance")
+st.markdown("Adjust Laser 1 to match **Laser 2's** value for either:")
+
+match_mode = st.radio("Choose parameter to match:", ["Fluence (J/cm²)", "Average Irradiance (W/cm²)"])
+adjust_mode = st.selectbox("Adjust in Laser 1:", ["Energy", "Pulse Duration", "Spot Diameter"])
+
+# Fluence = E / A
+# Avg Irradiance = (E * f) / A
+
+A1 = res1["Spot Area (cm²)"]
+A2 = res2["Spot Area (cm²)"]
+E1 = laser1["E"]
+f1 = laser1["f"]
+tau1 = laser1["tau"]
+
+if match_mode == "Fluence (J/cm²)":
+    target = res2["Fluence (J/cm²)"]
+
+    if adjust_mode == "Energy":
+        E_new = target * A1
+        st.success(f"To match Fluence, set Laser 1 Energy to **{E_new * 1000:.2f} mJ**")
+
+    elif adjust_mode == "Pulse Duration":
+        st.warning("Fluence does not depend on pulse duration.")
+
+    elif adjust_mode == "Spot Diameter":
+        A_new = E1 / target
+        D_new = 2 * np.sqrt(A_new / np.pi) * 10
+        st.success(f"To match Fluence, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
+
+elif match_mode == "Average Irradiance (W/cm²)":
+    target = res2["Avg Irradiance (W/cm²)"]
+
+    if adjust_mode == "Energy":
+        E_new = (target * A1) / f1
+        st.success(f"To match Avg Irradiance, set Laser 1 Energy to **{E_new * 1000:.2f} mJ**")
+
+    elif adjust_mode == "Pulse Duration":
+        st.warning("Average irradiance does not depend on pulse duration.")
+
+    elif adjust_mode == "Spot Diameter":
+        A_new = (E1 * f1) / target
+        D_new = 2 * np.sqrt(A_new / np.pi) * 10
+        st.success(f"To match Avg Irradiance, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
+
