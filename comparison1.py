@@ -1,108 +1,115 @@
-# Generate a new Streamlit app script for comparing two lasers side by side
+# Rebuild a clean and tested version of the laser comparison app
+# with safeguards, unique keys, and no silent failures
 
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
 
-st.title("🔬 Laser Comparison Tool")
+st.set_page_config(layout="centered")
+st.title("🔬 Dual Laser Parameter Comparison")
 
-st.markdown("Use this app to input parameters for **two lasers** and visually compare their behavior and power delivery.")
+st.markdown("This app lets you input parameters for two lasers and compare their physical and thermal characteristics.")
 
-# --- Input function for laser parameters ---
-def laser_inputs(label_prefix):
-    st.subheader(f"{label_prefix} Parameters")
-    D = st.number_input(f"{label_prefix} Spot Diameter (mm)", value=0.5, min_value=0.01, key=f"{label_prefix}_D")
-    E_mJ = st.number_input(f"{label_prefix} Energy per Pulse (mJ)", value=3.0, min_value=0.0, key=f"{label_prefix}_E")
-    f = st.number_input(f"{label_prefix} Pulse Frequency (Hz)", value=10, min_value=1, key=f"{label_prefix}_f")
-    N = st.number_input(f"{label_prefix} Number of Pulses", value=20, min_value=1, key=f"{label_prefix}_N")
-    unit = st.selectbox(f"{label_prefix} Pulse Duration Unit", ["µs", "ns"], key=f"{label_prefix}_unit")
-    tau_input = st.number_input(f"{label_prefix} Pulse Duration ({unit})", value=200.0, min_value=0.01, key=f"{label_prefix}_tau")
-    tau = tau_input * (1e-6 if unit == "µs" else 1e-9)
-    wavelength = st.number_input(f"{label_prefix} Wavelength (nm)", value=2940, min_value=100, key=f"{label_prefix}_wl")
-    return {"D": D, "E": E_mJ / 1000, "f": f, "N": N, "tau": tau, "wavelength": wavelength, "label": label_prefix}
+# --- Function to input one laser's parameters ---
+def laser_input(label, suffix):
+    st.subheader(f"{label} Inputs")
+    D = st.number_input(f"{label} Spot Diameter (mm)", 0.01, 100.0, 0.5, key=f"D_{suffix}")
+    E_mJ = st.number_input(f"{label} Energy per Pulse (mJ)", 0.0, 10000.0, 3.0, key=f"E_{suffix}")
+    f = st.number_input(f"{label} Pulse Frequency (Hz)", 1, 100000, 10, key=f"f_{suffix}")
+    N = st.number_input(f"{label} Number of Pulses", 1, 100000, 20, key=f"N_{suffix}")
+    duration_unit = st.selectbox(f"{label} Pulse Duration Unit", ["µs", "ns"], key=f"unit_{suffix}")
+    tau_val = st.number_input(f"{label} Pulse Duration ({duration_unit})", 0.01, 100000.0, 200.0, key=f"tau_{suffix}")
+    tau = tau_val * (1e-6 if duration_unit == "µs" else 1e-9)
+    wl = st.number_input(f"{label} Wavelength (nm)", 100, 10000, 2940, key=f"wl_{suffix}")
+    return {"D": D, "E": E_mJ / 1000, "f": f, "N": N, "tau": tau, "wl": wl, "label": label}
 
 # Input for both lasers
-laser1 = laser_inputs("Laser 1")
-laser2 = laser_inputs("Laser 2")
+laser1 = laser_input("Laser 1", "L1")
+laser2 = laser_input("Laser 2", "L2")
 
-def compute_laser(params):
-    A = np.pi * (params["D"] / 20)**2
-    F = params["E"] / A
-    I_peak = params["E"] / (A * params["tau"])
-    I_avg = params["E"] * params["f"] / A
-    P_peak = params["E"] / params["tau"]
-    E_total = params["E"] * params["N"]
-    T_exposure = params["N"] / params["f"]
-    T_on = params["N"] * params["tau"]
-    P_area_avg = E_total / (A * T_exposure)
-    return {
-        "Fluence (J/cm²)": F,
-        "Peak Irradiance (W/cm²)": I_peak,
-        "Average Irradiance (W/cm²)": I_avg,
-        "Peak Power (W)": P_peak,
-        "Total Energy (J)": E_total,
-        "Exposure Time (s)": T_exposure,
-        "Laser-On Time (s)": T_on,
-        "Avg Power Density (W/cm²)": P_area_avg,
-        "Spot Area (cm²)": A,
-        "Wavelength (nm)": params["wavelength"]
-    }
+# --- Calculation function ---
+def calculate(params):
+    try:
+        A = np.pi * (params["D"] / 20)**2  # mm² to cm²
+        F = params["E"] / A
+        I_peak = params["E"] / (A * params["tau"])
+        I_avg = params["E"] * params["f"] / A
+        P_peak = params["E"] / params["tau"]
+        E_total = params["E"] * params["N"]
+        T_exp = params["N"] / params["f"]
+        T_on = params["N"] * params["tau"]
+        P_area_avg = E_total / (A * T_exp)
+        return {
+            "Wavelength (nm)": params["wl"],
+            "Spot Area (cm²)": A,
+            "Fluence (J/cm²)": F,
+            "Peak Irradiance (W/cm²)": I_peak,
+            "Avg Irradiance (W/cm²)": I_avg,
+            "Peak Power (W)": P_peak,
+            "Total Energy (J)": E_total,
+            "Exposure Time (s)": T_exp,
+            "Laser-On Time (s)": T_on,
+            "Avg Power Density (W/cm²)": P_area_avg
+        }
+    except Exception as e:
+        st.error(f"Error in calculating for {params['label']}: {str(e)}")
+        return {}
 
-# Compute both lasers
-res1 = compute_laser(laser1)
-res2 = compute_laser(laser2)
+# Run calculations
+res1 = calculate(laser1)
+res2 = calculate(laser2)
 
-# Display comparison table
-st.markdown("### 📊 Numerical Comparison")
-df_compare = pd.DataFrame({
-    "Parameter": list(res1.keys()),
-    "Laser 1": list(res1.values()),
-    "Laser 2": [res2[k] for k in res1.keys()]
-})
-st.dataframe(df_compare)
+# --- Display table ---
+st.markdown("### 📊 Comparison Table")
+if res1 and res2:
+    df = pd.DataFrame({
+        "Parameter": list(res1.keys()),
+        "Laser 1": list(res1.values()),
+        "Laser 2": list(res2.values())
+    })
+    st.dataframe(df)
 
-# --- Plot comparisons ---
-st.markdown("### 📈 Fluence & Irradiance Comparison")
+# --- Plot fluence, irradiance, power ---
+if res1 and res2:
+    st.markdown("### 📈 Key Parameter Comparison")
+    keys_to_plot = ["Fluence (J/cm²)", "Peak Irradiance (W/cm²)", "Avg Irradiance (W/cm²)", "Peak Power (W)"]
+    values1 = [res1[k] for k in keys_to_plot]
+    values2 = [res2[k] for k in keys_to_plot]
+    x = np.arange(len(keys_to_plot))
 
-fig1, ax1 = plt.subplots()
-bar_width = 0.35
-x_labels = list(res1.keys())[:4]
-x = np.arange(len(x_labels))
-y1 = [res1[k] for k in x_labels]
-y2 = [res2[k] for k in x_labels]
-ax1.bar(x - bar_width/2, y1, bar_width, label='Laser 1')
-ax1.bar(x + bar_width/2, y2, bar_width, label='Laser 2')
-ax1.set_xticks(x)
-ax1.set_xticklabels(x_labels, rotation=45)
-ax1.set_ylabel("Value")
-ax1.set_title("Fluence, Peak Irradiance, Avg Irradiance, Peak Power")
-ax1.legend()
-st.pyplot(fig1)
+    fig, ax = plt.subplots()
+    bar_width = 0.35
+    ax.bar(x - bar_width/2, values1, width=bar_width, label="Laser 1")
+    ax.bar(x + bar_width/2, values2, width=bar_width, label="Laser 2")
+    ax.set_xticks(x)
+    ax.set_xticklabels(keys_to_plot, rotation=45)
+    ax.set_ylabel("Value")
+    ax.set_title("Fluence & Power Characteristics")
+    ax.legend()
+    st.pyplot(fig)
 
-# --- Timeline pulse delivery comparison ---
-st.markdown("### 🕒 Pulse Timeline Comparison")
-
+# --- Pulse timelines ---
 def simulate_timeline(N, f, tau, E):
     interval = 1 / f
-    pulse_times = np.array([i * interval for i in range(N)])
+    pulse_times = np.arange(N) * interval
     t_res = min(tau / 10, interval / 20)
-    t_max = pulse_times[-1] + 5 * tau
-    t = np.arange(0, t_max, t_res)
+    t = np.arange(0, pulse_times[-1] + 5 * tau, t_res)
     power = np.zeros_like(t)
     for pt in pulse_times:
-        idx = (t >= pt) & (t <= pt + tau)
+        idx = (t >= pt) & (t < pt + tau)
         power[idx] = E / tau
     return t, power
 
-t1, power1 = simulate_timeline(laser1["N"], laser1["f"], laser1["tau"], laser1["E"])
-t2, power2 = simulate_timeline(laser2["N"], laser2["f"], laser2["tau"], laser2["E"])
+t1, p1 = simulate_timeline(laser1["N"], laser1["f"], laser1["tau"], laser1["E"])
+t2, p2 = simulate_timeline(laser2["N"], laser2["f"], laser2["tau"], laser2["E"])
 
+st.markdown("### 🕒 Pulse Timeline")
 fig2, ax2 = plt.subplots()
-ax2.plot(t1, power1, label="Laser 1")
-ax2.plot(t2, power2, label="Laser 2")
-ax2.set_xlabel("Exposure Time (s)")
+ax2.plot(t1, p1, label="Laser 1")
+ax2.plot(t2, p2, label="Laser 2", linestyle="--")
+ax2.set_xlabel("Time (s)")
 ax2.set_ylabel("Power (W)")
-ax2.set_title("Pulse Timeline")
+ax2.set_title("Laser Pulse Delivery Timeline")
 ax2.legend()
 st.pyplot(fig2)
