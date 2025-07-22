@@ -1,20 +1,26 @@
-# Final version: Full-featured Streamlit app with fluence threshold comparison,
-# dual time display, laser pulse timeline, and thermal buildup chart.
+# Full-featured Streamlit app with all requested features integrated:
+# - User input for spot size, energy, frequency, number of shots, pulse duration
+# - Fluence and irradiance calculations
+# - Total deposited energy
+# - Dual time display (exposure and laser-on time)
+# - Fluence threshold comparison (tissue-based)
+# - Timeline chart of pulse sequence
+# - Thermal buildup chart with optional cooling
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Title
-st.title("🔥 Laser Burn & Fluence Calculator")
-st.markdown("Simulates a 50-pulse laser burn, calculates energy parameters, compares fluence to tissue thresholds, and visualizes thermal dynamics.")
+# Title and description
+st.title("🔬 Comprehensive Laser Parameter Calculator")
+st.markdown("Enter laser parameters to compute fluence, power, exposure metrics, compare to tissue thresholds, and visualize thermal dynamics.")
 
 # Sidebar inputs
 st.sidebar.header("Laser Input Parameters")
 D = st.sidebar.number_input("Spot Diameter (mm)", value=0.5, min_value=0.01)
 E_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", value=3.0, min_value=0.0)
 f = st.sidebar.number_input("Pulse Frequency (Hz)", value=10, min_value=1)
-N = 50  # fixed for 1 burn
+N = st.sidebar.number_input("Number of Pulses", value=50, min_value=1)
 unit = st.sidebar.selectbox("Pulse Duration Unit", ["µs", "ns"])
 tau_input = st.sidebar.number_input(f"Pulse Duration ({unit})", value=200.0, min_value=0.01)
 tau = tau_input * (1e-6 if unit == "µs" else 1e-9)
@@ -34,9 +40,9 @@ selected_tissue = st.sidebar.selectbox("Compare with Tissue", list(tissue_thresh
 threshold = tissue_thresholds[selected_tissue]
 
 # Calculations
-E = E_mJ / 1000
-A = np.pi * (D / 20)**2
-F = E / A
+E = E_mJ / 1000  # Energy in J
+A = np.pi * (D / 20)**2  # Area in cm²
+F = E / A  # Fluence
 I_peak = E / (A * tau)
 I_avg = E * f / A
 P_peak = E / tau
@@ -47,21 +53,23 @@ P_area_avg = E_total / (A * T_exposure)
 F_per_time = F / tau
 F_per_freq = F * f
 
-# Display core metrics
+# Results display
 st.subheader("📊 Calculated Parameters")
 col1, col2 = st.columns(2)
 with col1:
+    st.metric("Spot Area", f"{A:.4f} cm²")
     st.metric("Fluence", f"{F:.2f} J/cm²")
     st.metric("Peak Irradiance", f"{I_peak:.2e} W/cm²")
-    st.metric("Peak Power", f"{P_peak:.2f} W")
-    st.metric("Laser-On Time", f"{T_on:.4f} s")
-with col2:
-    st.metric("Exposure Time", f"{T_exposure:.2f} s")
     st.metric("Avg Irradiance", f"{I_avg:.2e} W/cm²")
+    st.metric("Peak Power", f"{P_peak:.2f} W")
+with col2:
     st.metric("Total Energy", f"{E_total:.2f} J")
+    st.metric("Exposure Time", f"{T_exposure:.2f} s")
+    st.metric("Laser-On Time", f"{T_on:.6f} s")
     st.metric("Energy Density (avg)", f"{P_area_avg:.2e} W/cm²")
+    st.metric("Pulse Energy Density Rate", f"{F_per_time:.2e} W·s/cm²")
 
-# Fluence vs Threshold Plot
+# Fluence threshold comparison
 st.subheader("⚠️ Fluence vs. Tissue Threshold")
 fig_thresh, ax_thresh = plt.subplots()
 ax_thresh.bar(["Your Fluence"], [F], color='green' if (threshold and F > threshold) else 'red')
@@ -71,15 +79,14 @@ if threshold:
 ax_thresh.set_ylabel("Fluence (J/cm²)")
 st.pyplot(fig_thresh)
 
-# Optional message
 if threshold:
     if F > threshold:
-        st.success(f"✅ Your fluence **exceeds** the {selected_tissue} ablation threshold ({threshold} J/cm²).")
+        st.success(f"✅ Fluence exceeds {selected_tissue} ablation threshold ({threshold} J/cm²).")
     else:
-        st.warning(f"⚠️ Your fluence is **below** the {selected_tissue} threshold ({threshold} J/cm²).")
+        st.warning(f"⚠️ Fluence is below {selected_tissue} ablation threshold ({threshold} J/cm²).")
 
-# Timeline & Thermal Simulation
-st.subheader("📈 Timeline & Simulated Thermal Rise")
+# Pulse timeline and thermal simulation
+st.subheader("📈 Pulse Timeline & Thermal Simulation")
 
 def simulate(N, f, tau, E, A, cooling_coef=0.05):
     interval = 1 / f
@@ -99,15 +106,15 @@ def simulate(N, f, tau, E, A, cooling_coef=0.05):
 
 t, power_profile, temperature = simulate(N, f, tau, E, A)
 
-# Plot power timeline
+# Plot 1: Power timeline
 fig1, ax1 = plt.subplots()
 ax1.plot(t, power_profile, label="Laser Power (W)")
 ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Power (W)")
-ax1.set_title("Laser Pulse Timeline (50 Pulses)")
+ax1.set_title(f"Laser Pulse Timeline ({int(N)} Pulses)")
 ax1.legend()
 
-# Plot temperature
+# Plot 2: Temperature rise
 fig2, ax2 = plt.subplots()
 ax2.plot(t, temperature, color="red", label="Simulated Temperature Rise (a.u.)")
 ax2.set_xlabel("Time (s)")
