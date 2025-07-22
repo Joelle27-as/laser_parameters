@@ -80,14 +80,4 @@ ax.set_ylabel("Fluence (J/cm²)")
 st.pyplot(fig)
 """
 
-# Writing requirements.txt
-requirements_txt = "streamlit\nmatplotlib\nnumpy"
-
-# Save both files
-with open("/mnt/data/laser_calculator.py", "w") as f:
-    f.write(app_code)
-
-with open("/mnt/data/requirements.txt", "w") as f:
-    f.write(requirements_txt)
-
 
