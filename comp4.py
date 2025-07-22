@@ -87,7 +87,6 @@ st.pyplot(fig)
 
 # Define the remaining matching sections to complete the app
 
-matching_sections = '''
 # -------------------------------
 # 🔺 Match Peak Irradiance (Iₚₑₐₖ)
 # -------------------------------
