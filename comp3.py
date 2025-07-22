@@ -1,5 +1,4 @@
-# Update the laser comparison app to handle extreme mismatches in pulse durations (e.g. ns vs µs)
-# Add clamped time resolution and safe simulation limits
+# Regenerate the app with the timeline plot removed (since ns durations cause instability)
 
 import streamlit as st
 import numpy as np
@@ -7,9 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 st.set_page_config(layout="centered")
-st.title("🔬 Dual Laser Parameter Comparison (Fixed ns/µs Timeline Bug)")
+st.title("🔬 Dual Laser Parameter Comparison")
 
-st.markdown("Compare two laser systems safely, including those with mismatched pulse durations (e.g. 6 ns vs 100 µs).")
+st.markdown("Compare two laser systems side-by-side. Timeline plot removed for better stability with nanosecond durations.")
 
 def laser_input(label, suffix):
     st.subheader(f"{label} Inputs")
@@ -23,11 +22,9 @@ def laser_input(label, suffix):
     wl = st.number_input(f"{label} Wavelength (nm)", 100, 10000, 2940, key=f"wl_{suffix}")
     return {"D": D, "E": E_mJ / 1000, "f": f, "N": N, "tau": tau, "wl": wl, "label": label}
 
-# Input lasers
 laser1 = laser_input("Laser 1", "L1")
 laser2 = laser_input("Laser 2", "L2")
 
-# Calculation
 def calculate(params):
     try:
         D, E, f, N, tau = params["D"], params["E"], params["f"], params["N"], params["tau"]
@@ -59,7 +56,6 @@ def calculate(params):
 res1 = calculate(laser1)
 res2 = calculate(laser2)
 
-# Comparison table
 if res1 and res2:
     st.markdown("### 📊 Comparison Table")
     df = pd.DataFrame({
@@ -69,7 +65,6 @@ if res1 and res2:
     })
     st.dataframe(df)
 
-    # Plot key bar chart
     st.markdown("### 📈 Fluence & Power Comparison")
     keys = ["Fluence (J/cm²)", "Peak Irradiance (W/cm²)", "Avg Irradiance (W/cm²)", "Peak Power (W)"]
     vals1 = [res1[k] for k in keys]
@@ -83,35 +78,3 @@ if res1 and res2:
     ax.set_ylabel("Value")
     ax.legend()
     st.pyplot(fig)
-
-    # Fixed timeline simulation
-    st.markdown("### 🕒 Pulse Timeline")
-    def simulate(N, f, tau, E, max_points=200000):
-        try:
-            interval = 1 / f
-            pulses = np.arange(N) * interval
-            t_step = max(min(tau / 10, interval / 20), 1e-9)  # clamp t_step ≥ 1 ns
-            t_end = min(pulses[-1] + 5 * tau, 1.2 * N / f)
-            t = np.arange(0, t_end, t_step)
-            if len(t) > max_points:
-                t = np.linspace(0, t_end, max_points)
-            p = np.zeros_like(t)
-            for pt in pulses:
-                idx = (t >= pt) & (t < pt + tau)
-                p[idx] = E / tau
-            return t, p
-        except Exception as e:
-            st.error(f"Timeline error: {e}")
-            return np.array([0]), np.array([0])
-
-    t1, p1 = simulate(laser1["N"], laser1["f"], laser1["tau"], laser1["E"])
-    t2, p2 = simulate(laser2["N"], laser2["f"], laser2["tau"], laser2["E"])
-
-    fig2, ax2 = plt.subplots()
-    ax2.plot(t1, p1, label="Laser 1")
-    ax2.plot(t2, p2, label="Laser 2", linestyle="--")
-    ax2.set_xlabel("Time (s)")
-    ax2.set_ylabel("Power (W)")
-    ax2.set_title("Pulse Timeline")
-    ax2.legend()
-    st.pyplot(fig2)
