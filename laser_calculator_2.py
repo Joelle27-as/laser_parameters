@@ -1,3 +1,6 @@
+# Updated Streamlit laser calculator with µs/ns pulse duration unit support
+
+updated_code = """
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +17,11 @@ D = st.sidebar.number_input("Spot Diameter (mm)", value=0.5, min_value=0.01)
 E_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", value=3.0, min_value=0.0)
 f = st.sidebar.number_input("Pulse Frequency (Hz)", value=10, min_value=1)
 N = st.sidebar.number_input("Number of Shots", value=50, min_value=1)
-tau_us = st.sidebar.number_input("Pulse Duration (µs)", value=200.0, min_value=0.01)
+
+# Pulse duration with unit selection
+unit = st.sidebar.selectbox("Pulse Duration Unit", ["µs", "ns"])
+tau_input = st.sidebar.number_input(f"Pulse Duration ({unit})", value=200.0, min_value=0.01)
+tau = tau_input * (1e-6 if unit == "µs" else 1e-9)
 
 # Tissue Threshold Comparison
 st.sidebar.markdown("---")
@@ -33,19 +40,18 @@ threshold = tissue_thresholds[selected_tissue]
 # Advanced toggle
 advanced = st.sidebar.checkbox("Show Advanced Parameters", value=True)
 
-# Conversions
-E = E_mJ / 1000  # Convert mJ to J
-A = np.pi * (D / 20)**2  # Spot area in cm²
+# Calculations
+E = E_mJ / 1000  # J
+A = np.pi * (D / 20)**2  # cm²
 F = E / A  # Fluence in J/cm²
-tau = tau_us * 1e-6  # Pulse duration in seconds
 I_peak = E / (A * tau)  # W/cm²
-I_avg = E * f / A  # Average irradiance in W/cm²
-P_peak = E / tau  # Peak power in W
-E_total = E * N  # Total energy in J
-T_total = N / f  # Total time in seconds
-P_area_avg = E_total / (A * T_total)  # Average energy density over time
-F_per_time = F / tau  # Pulse energy density rate
-F_per_freq = F * f  # Repetition energy rate
+I_avg = E * f / A  # W/cm²
+P_peak = E / tau  # W
+E_total = E * N  # J
+T_total = N / f  # s
+P_area_avg = E_total / (A * T_total)  # W/cm²
+F_per_time = F / tau  # W·s/cm²
+F_per_freq = F * f  # W/cm²
 
 # Results Display
 st.subheader("📊 Calculated Parameters")
@@ -75,3 +81,9 @@ if threshold:
     ax.legend()
 ax.set_ylabel("Fluence (J/cm²)")
 st.pyplot(fig)
+"""
+
+# Save updated script
+with open("/mnt/data/laser_calculator.py", "w") as f:
+    f.write(updated_code)
+"/mnt/data/laser_calculator.py"
