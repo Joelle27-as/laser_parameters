@@ -1,6 +1,5 @@
 # Full Streamlit app with burn timeline, dual time metrics, and thermal simulation
 
-streamlit_code = """
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
