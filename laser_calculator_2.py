@@ -1,15 +1,10 @@
-# Updated Streamlit laser calculator with µs/ns pulse duration unit support
-
-updated_code = """
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Title and description
 st.title("🔬 Laser Parameter Calculator")
 st.markdown("Calculate and visualize key laser parameters including fluence, irradiance, peak power, and compare to tissue ablation thresholds.")
 
-# Sidebar inputs
 st.sidebar.header("Laser Input Parameters")
 
 # Basic Inputs
@@ -43,7 +38,7 @@ advanced = st.sidebar.checkbox("Show Advanced Parameters", value=True)
 # Calculations
 E = E_mJ / 1000  # J
 A = np.pi * (D / 20)**2  # cm²
-F = E / A  # Fluence in J/cm²
+F = E / A  # J/cm²
 I_peak = E / (A * tau)  # W/cm²
 I_avg = E * f / A  # W/cm²
 P_peak = E / tau  # W
@@ -53,7 +48,7 @@ P_area_avg = E_total / (A * T_total)  # W/cm²
 F_per_time = F / tau  # W·s/cm²
 F_per_freq = F * f  # W/cm²
 
-# Results Display
+# Results
 st.subheader("📊 Calculated Parameters")
 
 col1, col2 = st.columns(2)
