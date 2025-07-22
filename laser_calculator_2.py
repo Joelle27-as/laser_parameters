@@ -81,9 +81,3 @@ if threshold:
     ax.legend()
 ax.set_ylabel("Fluence (J/cm²)")
 st.pyplot(fig)
-"""
-
-# Save updated script
-with open("/mnt/data/laser_calculator.py", "w") as f:
-    f.write(updated_code)
-"/mnt/data/laser_calculator.py"
