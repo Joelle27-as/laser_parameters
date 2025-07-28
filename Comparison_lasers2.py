@@ -74,23 +74,23 @@ st.dataframe(summary_df, use_container_width=True)
 csv = summary_df.to_csv(index=False).encode("utf-8")
 st.download_button("📥 Download Laser Comparison Table", csv, "laser_comparison_table.csv", "text/csv")
 # -------------------------------
-# 📚 Parameter Definitions (Inline)
+# 📚 Parameter Definitions (Inline, Corrected)
 # -------------------------------
 st.markdown("### 📚 Parameter Definitions")
 
 with st.expander("Click to view definitions and formulas"):
-    st.markdown("""
-- **Fluence (J/cm²)**: Energy delivered per unit area, defined as \( F = \\frac{E}{A} \).
+    st.markdown(r"""
+- **Fluence (J/cm²)**: Energy delivered per unit area, defined as $F = \frac{E}{A}$.
 
-- **Peak Irradiance (W/cm²)**: Instantaneous power per unit area during a pulse, given by \( I_{\\text{peak}} = \\frac{E}{A \\cdot \\tau} \).
+- **Peak Irradiance (W/cm²)**: Instantaneous power per unit area during a pulse, given by $I_{\text{peak}} = \frac{E}{A \cdot \tau}$.
 
-- **Average Irradiance (W/cm²)**: Average power per unit area over time, defined as \( I_{\\text{avg}} = \\frac{E \\cdot f}{A} \).
+- **Average Irradiance (W/cm²)**: Average power per unit area over time, defined as $I_{\text{avg}} = \frac{E \cdot f}{A}$.
 
-- **Total Energy (J)**: Energy delivered over all pulses, calculated by \( E_{\\text{total}} = E \\cdot N \).
+- **Total Energy (J)**: Energy delivered over all pulses, calculated by $E_{\text{total}} = E \cdot N$.
 
-- **Exposure Time (s)**: Time span of laser delivery, computed as \( t = \\frac{N}{f} \).
+- **Exposure Time (s)**: Time span of laser delivery, computed as $t = \frac{N}{f}$.
 
-- **Pulse Duration (s)**: Duration of one laser pulse, denoted as \( \\tau \). Shorter durations yield higher peak irradiance.
+- **Pulse Duration (s)**: Duration of one laser pulse, denoted as $\tau$. Shorter durations yield higher peak irradiance.
     """)
 # -------------------------------
 # 📈 Log Comparison Plot
