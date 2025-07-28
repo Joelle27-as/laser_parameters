@@ -74,44 +74,23 @@ st.dataframe(summary_df, use_container_width=True)
 csv = summary_df.to_csv(index=False).encode("utf-8")
 st.download_button("📥 Download Laser Comparison Table", csv, "laser_comparison_table.csv", "text/csv")
 # -------------------------------
-# 📚 Parameter Definitions
+# 📚 Parameter Definitions (Inline)
 # -------------------------------
 st.markdown("### 📚 Parameter Definitions")
 
 with st.expander("Click to view definitions and formulas"):
-    st.markdown(r"""
-- **Fluence (J/cm²)**:  
-  \[
-  \text{Fluence} = \frac{E}{A}
-  \]  
-  Energy delivered per unit area. Determines how much energy reaches a specific surface area.
+    st.markdown("""
+- **Fluence (J/cm²)**: Energy delivered per unit area, defined as \( F = \\frac{E}{A} \).
 
-- **Peak Irradiance (W/cm²)**:  
-  \[
-  I_{\text{peak}} = \frac{E}{A \cdot \tau}
-  \]  
-  Intensity of the laser during each pulse. Critical for ablation and nonlinear effects.
+- **Peak Irradiance (W/cm²)**: Instantaneous power per unit area during a pulse, given by \( I_{\\text{peak}} = \\frac{E}{A \\cdot \\tau} \).
 
-- **Average Irradiance (W/cm²)**:  
-  \[
-  I_{\text{avg}} = \frac{E \cdot f}{A}
-  \]  
-  Describes how much energy is delivered per second over an area. Useful for thermal effects.
+- **Average Irradiance (W/cm²)**: Average power per unit area over time, defined as \( I_{\\text{avg}} = \\frac{E \\cdot f}{A} \).
 
-- **Total Energy (J)**:  
-  \[
-  E_{\text{total}} = E \cdot N
-  \]  
-  Total energy delivered over all pulses.
+- **Total Energy (J)**: Energy delivered over all pulses, calculated by \( E_{\\text{total}} = E \\cdot N \).
 
-- **Exposure Time (s)**:  
-  \[
-  t = \frac{N}{f}
-  \]  
-  Total time over which all laser pulses are delivered.
+- **Exposure Time (s)**: Time span of laser delivery, computed as \( t = \\frac{N}{f} \).
 
-- **Pulse Duration (s)**:  
-  Time span of a single laser pulse. Shorter durations lead to higher peak irradiance.
+- **Pulse Duration (s)**: Duration of one laser pulse, denoted as \( \\tau \). Shorter durations yield higher peak irradiance.
     """)
 # -------------------------------
 # 📈 Log Comparison Plot
