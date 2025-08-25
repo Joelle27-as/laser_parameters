@@ -8,11 +8,60 @@ import matplotlib.pyplot as plt
 # ----------------------------
 def shared_sidebar():
     st.sidebar.title("🔧 Global Settings")
-    st.sidebar.info("These settings/notes are visible in all tabs.")
-    units = st.sidebar.radio("Units style", ["Metric (default)"], index=0, key="global_units")
-    st.sidebar.text_area("Notes (applies to both tools)", key="global_notes", placeholder="Write any notes here...")
+    st.sidebar.info("Notes and global preferences visible in all tabs.")
+    st.sidebar.text_area("Notes (applies to both tools)", key="global_notes", placeholder="Write any notes here…")
     st.sidebar.divider()
-    return {"units": units}
+    return {}
+
+# ----------------------------
+# Physical thermal model
+# ----------------------------
+def simulate_physical(
+    N, f, tau, E, A_m2,
+    rho=1000.0, c=4200.0, k=0.5, eta=0.7, T_amb=37.0, tau_cool=0.5,
+    lock_axis=False
+):
+    """
+    Semi-infinite solid (surface) temperature with pulsed surface heat flux.
+    q(t) = eta * P(t) / A  [W/m²]
+    ΔT(0,t) = (1/(k * sqrt(pi*alpha))) * ∫ q(t') / sqrt(t - t') dt'   (convolution with 1/sqrt(t))
+    Then multiplied by an exponential cooling envelope ~ exp(-t/tau_cool) for Newtonian-like cooling.
+    Returns t [s], P(t) [W], T(t) [°C] (absolute).
+    """
+    alpha = k / (rho * c)  # m²/s
+    interval = 1.0 / f
+    pulse_times = np.arange(N) * interval
+    # time resolution: resolve pulse and interpulse regions
+    t_res = min(tau / 10.0, interval / 20.0)
+    # total time: end of last pulse + some tail (or 1 s if locked)
+    t_max = pulse_times[-1] + 10.0 * tau
+    if lock_axis:
+        t_max = max(t_max, 1.0)
+    t = np.arange(0.0, t_max, t_res)
+
+    # Rectangular power profile (W)
+    P = np.zeros_like(t)
+    P_pulse = E / tau  # W
+    for pt in pulse_times:
+        idx = (t >= pt) & (t < pt + tau)
+        P[idx] = P_pulse
+
+    # Surface heat flux q(t) [W/m²]
+    q = eta * P / A_m2
+
+    # Convolution with kernel 1/sqrt(Δt)
+    # kernel[0] would be 1/sqrt(0) -> start from Δt = t_res
+    kernel = 1.0 / np.sqrt(np.arange(1, len(t) + 1, dtype=float) * t_res)
+    conv = np.convolve(q, kernel, mode='full')[:len(t)] * t_res  # numeric integral
+    dT = conv / (k * np.sqrt(np.pi * alpha))  # °C (K)
+
+    # Newtonian-like cooling envelope (simple, tunable)
+    if tau_cool > 0:
+        env = np.exp(-t / tau_cool)
+        dT *= env
+
+    T_abs = T_amb + dT
+    return t, P, T_abs, dT
 
 # ----------------------------
 # App 1: Laser Calculator
@@ -20,7 +69,7 @@ def shared_sidebar():
 def app_laser_calculator():
     st.header("🔬 Laser Calculator with Export and Visual Analysis")
 
-    # Tab-specific sidebar controls (appear UNDER the shared section)
+    # --- Tab-specific sidebar controls (under shared section) ---
     st.sidebar.subheader("Laser Calculator • Parameters")
     D = st.sidebar.number_input("Spot Diameter (mm)", value=0.5, min_value=0.01, key="calc_D")
     E_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", value=3.0, min_value=0.0, key="calc_E")
@@ -32,23 +81,32 @@ def app_laser_calculator():
     wavelength = st.sidebar.number_input("Laser Wavelength (nm)", value=2940, min_value=100, key="calc_wavelength")
     lock_axis = st.sidebar.checkbox("Lock X-axis scale to 1.0 s", value=False, key="calc_lock_axis")
 
-    # Calculations
-    E = E_mJ / 1000
-    A = np.pi * (D / 20)**2  # cm²
-    F = E / A
-    I_peak = E / (A * tau)
-    I_avg = E * f / A
-    P_peak = E / tau
-    E_total = E * N
-    T_exposure = N / f
-    T_on = N * tau
-    P_area_avg = E_total / (A * T_exposure)
-    F_per_time = F / tau
+    st.sidebar.subheader("Material & Absorption")
+    rho = st.sidebar.number_input("Density ρ (kg/m³)", value=1000.0, min_value=1.0, key="mat_rho")
+    c = st.sidebar.number_input("Specific heat c (J/kg·K)", value=4200.0, min_value=1.0, key="mat_c")
+    k = st.sidebar.number_input("Conductivity k (W/m·K)", value=0.5, min_value=0.001, key="mat_k")
+    eta = st.sidebar.slider("Absorbed fraction η", 0.0, 1.0, 0.7, key="mat_eta")
+    T_amb = st.sidebar.number_input("Ambient / Baseline (°C)", value=37.0, key="mat_Tamb")
+    tau_cool = st.sidebar.number_input("Cooling time constant τ_c (s)", value=0.5, min_value=0.0, key="mat_tauc")
 
-    # Exportable results
+    # --- Calculations (geometric & energy) ---
+    E = E_mJ / 1000.0               # J
+    A_cm2 = np.pi * (D / 20.0) ** 2  # cm²
+    A_m2 = A_cm2 * 1e-4              # m²
+    F = E / A_cm2                    # J/cm²
+    I_peak = E / (A_cm2 * tau)       # W/cm²
+    I_avg = E * f / A_cm2            # W/cm²
+    P_peak = E / tau                 # W
+    E_total = E * N                  # J
+    T_exposure = N / f               # s
+    T_on = N * tau                   # s
+    P_area_avg = E_total / (A_cm2 * T_exposure)  # W/cm²
+    F_per_time = F / tau             # W·s/cm²
+
+    # --- Exportable results ---
     results = {
         "Laser Wavelength (nm)": wavelength,
-        "Spot Area (cm²)": A,
+        "Spot Area (cm²)": A_cm2,
         "Fluence (J/cm²)": F,
         "Peak Irradiance (W/cm²)": I_peak,
         "Average Irradiance (W/cm²)": I_avg,
@@ -75,7 +133,7 @@ def app_laser_calculator():
     st.markdown("### 📐 Calculated Parameters")
     st.dataframe(df_export, use_container_width=True)
 
-    # Fluence vs Threshold
+    # --- Fluence vs simple tissue threshold (optional visual) ---
     st.markdown("### ⚖️ Fluence vs Tissue Threshold")
     tissue_thresholds = {"None": None, "Liver": 2.5, "Skin": 4.0, "Muscle": 3.5, "Brain": 2.0, "Cartilage": 6.0}
     selected_tissue = st.selectbox("Tissue Type", list(tissue_thresholds.keys()), key="calc_tissue_top")
@@ -93,30 +151,24 @@ def app_laser_calculator():
     ax_thresh.legend()
     st.pyplot(fig_thresh)
 
-    # Timeline & Thermal
-    st.markdown("### 📈 Pulse Timeline & Thermal Simulation")
+    # --- Timeline & Thermal (PHYSICAL MODEL) ---
+    st.markdown("### 📈 Pulse Timeline & Thermal (physical model)")
 
-    def simulate(N, f, tau, E, A, cooling_coef=0.05):
-        interval = 1 / f
-        pulse_times = np.array([i * interval for i in range(N)])
-        t_res = min(tau / 10, interval / 20)
-        t_max = max(pulse_times[-1] + 5 * tau, 1.0 if lock_axis else pulse_times[-1] + 5 * tau)
-        t = np.arange(0, t_max, t_res)
-        power = np.zeros_like(t)
-        for pt in pulse_times:
-            idx = (t >= pt) & (t <= pt + tau)
-            power[idx] = E / tau
-        heat = np.cumsum(power) * t_res / (A * np.sqrt(t + 0.001))
-        cooling = np.arange(len(t)) * t_res * cooling_coef
-        temperature = heat - cooling
-        temperature[temperature < 0] = 0
-        return t, power, temperature
+    t, P_t, T_abs, dT = simulate_physical(
+        N=N, f=f, tau=tau, E=E, A_m2=A_m2,
+        rho=rho, c=c, k=k, eta=eta, T_amb=T_amb, tau_cool=tau_cool,
+        lock_axis=lock_axis
+    )
 
-    t, power_profile, temperature = simulate(N, f, tau, E, A)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Max ΔT (°C)", f"{np.max(dT):.2f}")
+    c2.metric("Max T (°C)", f"{np.max(T_abs):.2f}")
+    c3.metric("Laser-On Time (s)", f"{T_on:.4f}")
 
+    # Power timeline
     fig1, ax1 = plt.subplots()
-    ax1.plot(t, power_profile, label="Laser Power (W)")
-    ax1.set_xlabel("Exposure Time (s)")
+    ax1.plot(t, P_t, label="Laser Power (W)")
+    ax1.set_xlabel("Time (s)")
     ax1.set_ylabel("Power (W)")
     ax1.set_title("Laser Pulse Timeline")
     ax1.legend()
@@ -124,11 +176,12 @@ def app_laser_calculator():
         ax1.set_xlim(0, 1.0)
     st.pyplot(fig1)
 
+    # Temperature over time (absolute)
     fig2, ax2 = plt.subplots()
-    ax2.plot(t, temperature, color="red", label="Simulated Temperature Rise (a.u.)")
-    ax2.set_xlabel("Exposure Time (s)")
-    ax2.set_ylabel("ΔT (a.u.)")
-    ax2.set_title("Thermal Buildup Over Time")
+    ax2.plot(t, T_abs, label="Surface Temperature (°C)")
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("°C")
+    ax2.set_title("Thermal Buildup Over Time (surface)")
     ax2.legend()
     st.pyplot(fig2)
 
@@ -138,7 +191,7 @@ def app_laser_calculator():
 def app_laser_comparison():
     st.header("🔬 Dual Laser Parameter Comparison Tool")
 
-    # Tab-specific sidebar controls (appear UNDER the shared section)
+    # Tab-specific sidebar controls
     st.sidebar.subheader("Laser Comparison • Laser 1")
     D1 = st.sidebar.number_input("Spot Diameter (mm)", min_value=0.01, value=0.51, key="cmp_D1")
     E1_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", min_value=0.001, value=2.0, key="cmp_E1")
@@ -158,8 +211,8 @@ def app_laser_comparison():
     _λ2 = st.sidebar.number_input("Wavelength (nm)", min_value=100, value=2940, key="cmp_λ2")
 
     def calculate_params(D, E_mJ, f, N, tau_val, tau_unit):
-        E = E_mJ / 1000  # J
-        A = np.pi * (D / 10 / 2) ** 2  # cm²
+        E = E_mJ / 1000.0  # J
+        A = np.pi * (D / 10.0 / 2.0) ** 2  # cm²
         tau = tau_val * (1e-6 if tau_unit == "µs" else 1e-9)
         fluence = E / A
         I_peak = E / (A * tau)
@@ -257,10 +310,8 @@ def app_laser_comparison():
 st.set_page_config(page_title="Laser Tools", layout="wide")
 st.title("💡 Laser Tools")
 
-# Render shared sidebar first (so it stays on top)
 _ = shared_sidebar()
 
-# Tabs
 tab1, tab2 = st.tabs(["Laser Calculator", "Laser Comparison"])
 with tab1:
     app_laser_calculator()
