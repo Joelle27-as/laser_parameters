@@ -4,13 +4,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ----------------------------
+# Global Sidebar (shared)
+# ----------------------------
+def shared_sidebar():
+    st.sidebar.title("🔧 Global Settings")
+    st.sidebar.info("These settings/notes are visible in all tabs.")
+    units = st.sidebar.radio("Units style", ["Metric (default)"], index=0, key="global_units")
+    st.sidebar.text_area("Notes (applies to both tools)", key="global_notes", placeholder="Write any notes here...")
+    st.sidebar.divider()
+    return {"units": units}
+
+# ----------------------------
 # App 1: Laser Calculator
 # ----------------------------
 def app_laser_calculator():
     st.header("🔬 Laser Calculator with Export and Visual Analysis")
 
-    # --- INPUTS ---
-    st.sidebar.header("Laser Calculator Parameters")
+    # Tab-specific sidebar controls (appear UNDER the shared section)
+    st.sidebar.subheader("Laser Calculator • Parameters")
     D = st.sidebar.number_input("Spot Diameter (mm)", value=0.5, min_value=0.01, key="calc_D")
     E_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", value=3.0, min_value=0.0, key="calc_E")
     f = st.sidebar.number_input("Pulse Frequency (Hz)", value=10, min_value=1, key="calc_f")
@@ -21,21 +32,9 @@ def app_laser_calculator():
     wavelength = st.sidebar.number_input("Laser Wavelength (nm)", value=2940, min_value=100, key="calc_wavelength")
     lock_axis = st.sidebar.checkbox("Lock X-axis scale to 1.0 s", value=False, key="calc_lock_axis")
 
-    # --- TISSUE THRESHOLD ---
-    tissue_thresholds = {
-        "None": None,
-        "Liver": 2.5,
-        "Skin": 4.0,
-        "Muscle": 3.5,
-        "Brain": 2.0,
-        "Cartilage": 6.0
-    }
-    selected_tissue = st.sidebar.selectbox("Tissue Type", list(tissue_thresholds.keys()), key="calc_tissue")
-    ref_threshold = tissue_thresholds[selected_tissue]
-
-    # --- CALCULATIONS ---
+    # Calculations
     E = E_mJ / 1000
-    A = np.pi * (D / 20)**2
+    A = np.pi * (D / 20)**2  # cm²
     F = E / A
     I_peak = E / (A * tau)
     I_avg = E * f / A
@@ -46,7 +45,7 @@ def app_laser_calculator():
     P_area_avg = E_total / (A * T_exposure)
     F_per_time = F / tau
 
-    # --- EXPORTABLE RESULTS ---
+    # Exportable results
     results = {
         "Laser Wavelength (nm)": wavelength,
         "Spot Area (cm²)": A,
@@ -74,10 +73,13 @@ def app_laser_calculator():
     st.download_button("📥 Download Selected Results (CSV)", csv, "laser_results.csv", "text/csv")
 
     st.markdown("### 📐 Calculated Parameters")
-    st.dataframe(df_export)
+    st.dataframe(df_export, use_container_width=True)
 
-    # --- COMPARISON GRAPH ---
+    # Fluence vs Threshold
     st.markdown("### ⚖️ Fluence vs Tissue Threshold")
+    tissue_thresholds = {"None": None, "Liver": 2.5, "Skin": 4.0, "Muscle": 3.5, "Brain": 2.0, "Cartilage": 6.0}
+    selected_tissue = st.selectbox("Tissue Type", list(tissue_thresholds.keys()), key="calc_tissue_top")
+    ref_threshold = tissue_thresholds[selected_tissue]
     labels = ["Your Fluence"]
     values = [F]
     colors = ["green" if (ref_threshold and F > ref_threshold) else "red"]
@@ -91,7 +93,7 @@ def app_laser_calculator():
     ax_thresh.legend()
     st.pyplot(fig_thresh)
 
-    # --- TIMELINE & THERMAL SIM ---
+    # Timeline & Thermal
     st.markdown("### 📈 Pulse Timeline & Thermal Simulation")
 
     def simulate(N, f, tau, E, A, cooling_coef=0.05):
@@ -130,31 +132,30 @@ def app_laser_calculator():
     ax2.legend()
     st.pyplot(fig2)
 
-
 # ----------------------------
 # App 2: Dual Laser Comparison
 # ----------------------------
 def app_laser_comparison():
     st.header("🔬 Dual Laser Parameter Comparison Tool")
 
-    # Inputs for both lasers (sidebar)
-    st.sidebar.header("Laser 1 Parameters")
+    # Tab-specific sidebar controls (appear UNDER the shared section)
+    st.sidebar.subheader("Laser Comparison • Laser 1")
     D1 = st.sidebar.number_input("Spot Diameter (mm)", min_value=0.01, value=0.51, key="cmp_D1")
     E1_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", min_value=0.001, value=2.0, key="cmp_E1")
     f1 = st.sidebar.number_input("Pulse Frequency (Hz)", min_value=1, value=20, key="cmp_f1")
     N1 = st.sidebar.number_input("Number of Pulses", min_value=1, value=10, key="cmp_N1")
     tau1_val = st.sidebar.number_input("Pulse Duration", min_value=0.001, value=100.0, key="cmp_tau1_val")
     tau1_unit = st.sidebar.selectbox("Pulse Duration Unit", ["µs", "ns"], key="cmp_tau1_unit")
-    λ1 = st.sidebar.number_input("Wavelength (nm)", min_value=100, value=2940, key="cmp_λ1")
+    _λ1 = st.sidebar.number_input("Wavelength (nm)", min_value=100, value=2940, key="cmp_λ1")
 
-    st.sidebar.header("Laser 2 Parameters")
+    st.sidebar.subheader("Laser Comparison • Laser 2")
     D2 = st.sidebar.number_input("Spot Diameter (mm)", min_value=0.01, value=0.81, key="cmp_D2")
     E2_mJ = st.sidebar.number_input("Energy per Pulse (mJ)", min_value=0.001, value=3.8, key="cmp_E2")
     f2 = st.sidebar.number_input("Pulse Frequency (Hz)", min_value=1, value=20, key="cmp_f2")
     N2 = st.sidebar.number_input("Number of Pulses", min_value=1, value=10, key="cmp_N2")
     tau2_val = st.sidebar.number_input("Pulse Duration", min_value=0.001, value=6.0, key="cmp_tau2_val")
     tau2_unit = st.sidebar.selectbox("Pulse Duration Unit", ["µs", "ns"], key="cmp_tau2_unit")
-    λ2 = st.sidebar.number_input("Wavelength (nm)", min_value=100, value=2940, key="cmp_λ2")
+    _λ2 = st.sidebar.number_input("Wavelength (nm)", min_value=100, value=2940, key="cmp_λ2")
 
     def calculate_params(D, E_mJ, f, N, tau_val, tau_unit):
         E = E_mJ / 1000  # J
@@ -210,7 +211,7 @@ def app_laser_comparison():
     ax.legend()
     st.pyplot(fig)
 
-    # Matching tools (Peak Irradiance, Fluence, Avg Irradiance)
+    # Matching helpers
     st.markdown("### 🔺 Match Peak Irradiance (Iₚₑₐₖ)")
     option_peak = st.selectbox("Adjust in Laser 1:", ["Energy", "Pulse Duration", "Spot Diameter"], key="cmp_match_peak")
     I_target = res2["Peak Irradiance (W/cm²)"]
@@ -250,13 +251,16 @@ def app_laser_comparison():
         D_new = 2 * np.sqrt(A_new / np.pi) * 10
         st.success(f"To match Avg Irradiance, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
 
-
 # ----------------------------
 # Main
 # ----------------------------
 st.set_page_config(page_title="Laser Tools", layout="wide")
 st.title("💡 Laser Tools")
 
+# Render shared sidebar first (so it stays on top)
+_ = shared_sidebar()
+
+# Tabs
 tab1, tab2 = st.tabs(["Laser Calculator", "Laser Comparison"])
 with tab1:
     app_laser_calculator()
