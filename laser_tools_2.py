@@ -169,6 +169,45 @@ def app_laser_comparison():
     ax.set_title("Comparison of Laser Parameters")
     ax.legend()
     st.pyplot(fig)
+# Matching helpers
+    st.markdown("### 🔺 Match Peak Irradiance (Iₚₑₐₖ)")
+    option_peak = st.selectbox("Adjust in Laser 1:", ["Energy", "Pulse Duration", "Spot Diameter"], key="cmp_match_peak")
+    I_target = res2["Peak Irradiance (W/cm²)"]
+    A1, tau1, E1 = res1["Spot Area (cm²)"], res1["Pulse Duration (s)"], res1["Energy (J)"]
+    if option_peak == "Energy":
+        E_new = I_target * A1 * tau1
+        st.success(f"To match Iₚₑₐₖ, set Laser 1 Energy to **{E_new * 1000:.2f} mJ**")
+    elif option_peak == "Pulse Duration":
+        tau_new = E1 / (I_target * A1)
+        unit = "µs" if tau_new >= 1e-6 else "ns"
+        tau_val = tau_new * 1e6 if unit == "µs" else tau_new * 1e9
+        st.success(f"To match Iₚₑₐₖ, set Laser 1 Pulse Duration to **{tau_val:.2f} {unit}**")
+    elif option_peak == "Spot Diameter":
+        A_new = E1 / (I_target * tau1)
+        D_new = 2 * np.sqrt(A_new / np.pi) * 10
+        st.success(f"To match Iₚₑₐₖ, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
+
+    st.markdown("### 🔶 Match Fluence (J/cm²)")
+    option_fluence = st.selectbox("Adjust in Laser 1 (Fluence):", ["Energy", "Spot Diameter"], key="cmp_match_fluence")
+    fluence_target = res2["Fluence (J/cm²)"]
+    if option_fluence == "Energy":
+        E_new = fluence_target * A1
+        st.success(f"To match Fluence, set Laser 1 Energy to **{E_new * 1000:.2f} mJ**")
+    elif option_fluence == "Spot Diameter":
+        A_new = E1 / fluence_target
+        D_new = 2 * np.sqrt(A_new / np.pi) * 10
+        st.success(f"To match Fluence, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
+
+    st.markdown("### 🔷 Match Average Irradiance (W/cm²)")
+    option_avg = st.selectbox("Adjust in Laser 1 (Avg Irradiance):", ["Energy", "Spot Diameter"], key="cmp_match_avg")
+    I_avg_target = res2["Avg Irradiance (W/cm²)"]
+    if option_avg == "Energy":
+        E_new = (I_avg_target * A1) / f1
+        st.success(f"To match Avg Irradiance, set Laser 1 Energy to **{E_new * 1000:.2f} mJ**")
+    elif option_avg == "Spot Diameter":
+        A_new = (E1 * f1) / I_avg_target
+        D_new = 2 * np.sqrt(A_new / np.pi) * 10
+        st.success(f"To match Avg Irradiance, set Laser 1 Spot Diameter to **{D_new:.2f} mm**")
 
 # ----------------------------
 # Main
